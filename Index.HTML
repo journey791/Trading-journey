@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Trading Journal</title>
+<style>
+  body { margin:0; font-family:Arial, sans-serif; background:#111; color:#fff; }
+  nav { background:#222; padding:10px; display:flex; justify-content:space-around; }
+  nav a { color:white; text-decoration:none; padding:8px 12px; border-radius:4px; }
+  nav a:hover { background:#333; }
+  section { display:none; padding:20px; }
+  section.active { display:block; }
+  .container { max-width:900px; margin:auto; }
+  h1 { color:#0f0; }
+
+  input, textarea, select {
+    width:100%; padding:8px; margin:6px 0; border:none; border-radius:4px;
+  }
+  input[type="file"] { background:#222; }
+  button {
+    background:#0f0; border:none; padding:10px 20px; color:#000;
+    cursor:pointer; border-radius:4px; font-weight:bold;
+  }
+  button:hover { background:#0c0; }
+
+  .trade-card {
+    background:#1a1a1a; padding:10px; border-radius:8px; margin:10px 0;
+  }
+  .trade-images img {
+    max-width:48%; margin:1%; border-radius:6px;
+  }
+  .pnl-positive { color:lime; }
+  .pnl-negative { color:red; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" data-page="dashboard">Dashboard</a>
+  <a href="#" data-page="addTrade">Add Trade</a>
+  <a href="#" data-page="tradesList">Trades List</a>
+  <a href="#" data-page="reports">Reports</a>
+  <a href="#" data-page="settings">Settings</a>
+</nav>
+
+<div class="container">
+
+  <!-- Dashboard -->
+  <section id="dashboard" class="active">
+    <h1>📊 Dashboard</h1>
+    <p>Portfolio overview will be shown here.</p>
+  </section>
+
+  <!-- Add Trade -->
+  <section id="addTrade">
+    <h1>➕ Add Trade</h1>
+    <form id="tradeForm">
+      <input type="text" id="pair" placeholder="Pair (e.g., EURUSD)" required>
+      <input type="date" id="date" required>
+      <select id="position" required>
+        <option value="">Position</option>
+        <option value="Buy">Buy</option>
+        <option value="Sell">Sell</option>
+      </select>
+      <input type="text" id="reason" placeholder="Reason for Trade" required>
+      <input type="text" id="confidence" placeholder="Confidence (%)" required>
+      <input type="text" id="chartComment" placeholder="Chart Comment" required>
+      <textarea id="description" placeholder="Description"></textarea>
+      <input type="time" id="timeEnter" required>
+      <input type="number" id="pnl" placeholder="PnL (use + or - sign)" required>
+      <label>Screenshot 1 (e.g., Higher TF)</label>
+      <input type="file" id="screenshot1" accept="image/*" required>
+      <label>Screenshot 2 (e.g., Entry TF)</label>
+      <input type="file" id="screenshot2" accept="image/*" required>
+      <button type="submit">Save Trade</button>
+    </form>
+  </section>
+
+  <!-- Trades List -->
+  <section id="tradesList">
+    <h1>📄 Trades List</h1>
+    <div id="tradeList"></div>
+  </section>
+
+  <!-- Reports -->
+  <section id="reports">
+    <h1>📈 Reports</h1>
+    <p>Stats, charts, and analysis will be here.</p>
+  </section>
+
+  <!-- Settings -->
+  <section id="settings">
+    <h1>⚙ Settings</h1>
+    <p>Theme, preferences, and options.</p>
+  </section>
+
+</div>
+
+<script>
+  // Navigation
+  const links = document.querySelectorAll("nav a");
+  const sections = document.querySelectorAll("section");
+  links.forEach(link => {
+    link.addEventListener("click", e => {
+      e.preventDefault();
+      const page = link.getAttribute("data-page");
+      sections.forEach(sec => sec.classList.remove("active"));
+      document.getElementById(page).classList.add("active");
+    });
+  });
+
+  const tradeForm = document.getElementById("tradeForm");
+  const tradeList = document.getElementById("tradeList");
+
+  // Load saved trades from LocalStorage
+  let trades = JSON.parse(localStorage.getItem("trades")) || [];
+  renderTrades();
+
+  tradeForm.addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const pair = document.getElementById("pair").value;
+    const date = document.getElementById("date").value;
+    const position = document.getElementById("position").value;
+    const reason = document.getElementById("reason").value;
+    const confidence = document.getElementById("confidence").value;
+    const chartComment = document.getElementById("chartComment").value;
+    const description = document.getElementById("description").value;
+    const timeEnter = document.getElementById("timeEnter").value;
+    const pnlValue = parseFloat(document.getElementById("pnl").value);
+
+    const screenshot1 = document.getElementById("screenshot1").files[0];
+    const screenshot2 = document.getElementById("screenshot2").files[0];
+
+    if (!screenshot1 || !screenshot2) {
+      alert("Please upload both screenshots");
+      return;
+    }
+
+    const reader1 = new FileReader();
+    const reader2 = new FileReader();
+
+    reader1.onload = function(e1) {
+      reader2.onload = function(e2) {
+        const trade = {
+          pair, date, position, reason, confidence, chartComment,
+          description, timeEnter, pnlValue,
+          screenshot1: e1.target.result,
+          screenshot2: e2.target.result
+        };
+        trades.push(trade);
+        localStorage.setItem("trades", JSON.stringify(trades));
+        renderTrades();
+        tradeForm.reset();
+        alert("Trade saved!");
+      }
+      reader2.readAsDataURL(screenshot2);
+    }
+    reader1.readAsDataURL(screenshot1);
+  });
+
+  function renderTrades() {
+    tradeList.innerHTML = "";
+    trades.forEach(t => {
+      let pnlClass = t.pnlValue >= 0 ? "pnl-positive" : "pnl-negative";
+      const tradeCard = document.createElement("div");
+      tradeCard.classList.add("trade-card");
+      tradeCard.innerHTML = `
+        <h3>${t.pair} (${t.position}) - ${t.date} @ ${t.timeEnter}</h3>
+        <p><strong>Reason:</strong> ${t.reason}</p>
+        <p><strong>Chart Comment:</strong> ${t.chartComment}</p>
+        <p><strong>Description:</strong> ${t.description}</p>
+        <p><strong>Confidence:</strong> ${t.confidence}%</p>
+        <p><strong>PnL:</strong> <span class="${pnlClass}">${t.pnlValue}</span></p>
+        <div class="trade-images">
+          <img src="${t.screenshot1}">
+          <img src="${t.screenshot2}">
+        </div>
+      `;
+      tradeList.appendChild(tradeCard);
+    });
+  }
+</script>
+
+</body>
+</html>
